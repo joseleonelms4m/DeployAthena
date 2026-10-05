@@ -1,0 +1,110 @@
+# Deploy Athena
+
+Deploy Athena is a Node.js web app (no framework, no build step) that lets an
+operator deploy/update the "Athena" drowsiness-detection software on a fleet
+of remote Linux machines ("HUBs") over SSH, from a single browser dashboard.
+
+The operator opens the dashboard, selects HUBs from a table (populated from
+`hubs.csv`), and triggers an action (deploy, update binary, PERCLOS on/off,
+vibration on/off). The server runs the SSH commands against each selected HUB
+in the background and pushes progress back to the browser in real time.
+
+## Entry point
+
+```bash
+npm install
+npm run lts     # node src/ws-server.js  →  http://localhost:8080
+```
+
+`src/ws-server.js` is the only entry point in this checkout — it serves the
+dashboard (`src/views/ws-page.html`) over plain HTTP and pushes state/log
+updates over a WebSocket connection on the same port (`8080`).
+
+## How the WebSocket layer is built
+
+Node has no built-in WebSocket server, and this project intentionally avoids
+adding a dependency (`ws`, `socket.io`, etc.) for it. `src/ws.js` is a small,
+hand-rolled implementation of the server side of the WebSocket protocol
+([RFC 6455](https://www.rfc-editor.org/rfc/rfc6455)): it does the HTTP
+Upgrade handshake, and parses/builds the raw frames itself (opcode, payload
+length incl. the 126/127 extended-length cases, and unmasking client
+frames).
+
+This was written following an existing "from scratch" walkthrough found
+online, credited in `md/lts.md`:
+
+> Implementing a WebSocket Server from Scratch in Node.js — Better Programming (Medium)
+> https://medium.com/better-programming/implementing-a-websocket-server-from-scratch-in-node-js-a1360e00a95f
+
+That article is the reference model for `WebSocketServer` in `src/ws.js`
+(the handshake using the `Sec-WebSocket-Accept` GUID, and the manual frame
+parsing/masking). Read it if you need to touch `_init`, `parseFrame`,
+`createFrame`, or `_unmask` — the code mirrors that model closely, so the
+article explains *why* the bit-twiddling is shaped the way it is, not just
+what it does.
+
+## Request/message flow
+
+```mermaid
+flowchart TD
+    Browser["Browser dashboard\n(src/views/ws-page.html + ws-page.js)"]
+
+    subgraph Server["src/ws-server.js (port 8080)"]
+        WS["src/ws.js\nWebSocketServer\n(hand-rolled RFC6455 handshake + framing)"]
+        Router["message switch\n(task: init / deploy / update /\nperclosOn / perclosOff /\nvibrationOn / vibrationOff)"]
+        Controllers["src/controllers/*Ws.controller.js"]
+        Services["src/services/*.service.js\n(NodeSSH via src/tools/tools.js)"]
+    end
+
+    Hubs[("Remote HUBs\n(SSH, over hubs.csv)")]
+    State[("state.json")]
+    Logs[("logs/&lt;hub&gt;.log")]
+
+    Browser -- "HTTP GET /" --> WS
+    Browser <-- "WebSocket JSON messages" --> WS
+    WS --> Router --> Controllers --> Services
+    Services -- "ssh2 / node-ssh" --> Hubs
+    Services --> State
+    Services --> Logs
+    Controllers -- "reply() pushes progress" --> WS --> Browser
+```
+
+Each controller/service pair follows the same shape: look up the selected
+HUBs from `hubs.csv`, open an SSH connection per HUB (`Tools.connectSSH`,
+with password fallback), run the remote commands, update `state.json` +
+append to `logs/<hub>.log`, and push the new state back over the socket via
+the `reply` callback so the dashboard updates without polling.
+
+## Project layout
+
+```
+src/
+  ws-server.js          entry point — wires the WebSocket server to the controllers
+  ws.js                 hand-rolled WebSocket server (see "model from internet" above)
+  config/
+    config.js           SSH credentials/port, remote path, retry limit
+    variables.js         paths for hubs.csv / logs / state.json / update payload
+  controllers/          per-action orchestration (deploy, update, perclos, vibration)
+  services/             per-action SSH/business logic, returns a status string
+  tools/tools.js        shared statics: SSH connect, CSV parsing, state persistence, logging
+  views/
+    ws-page.html/.js/.css  the dashboard UI served to the browser
+
+hubs.csv                HUB registry (name,ip) — must use Unix (LF) line endings
+state.json              per-HUB status persisted across runs (safe to hand-edit/reset)
+logs/<hub>.log          append-only per-HUB deploy log
+athena.zip              deploy payload uploaded to each HUB via SFTP
+fcsv143.tar             payload used by the update flow
+md/                     background docs (legacy1-3.md, lts.md)
+```
+
+## Status values
+
+`PENDING`, `IN_PROGRESS`, `UPLOADED`, `INSTALLED`, `SUCCESS`, `FAILED`,
+`OFFLINE` for deploy, plus feature-specific variants such as
+`UPDATE_OK`/`UPDATE_FAILED`, `PERCLOS_ON_OK`/`PERCLOS_OFF_OK`,
+`VIB_ON_OK`/`VIB_OFF_OK` — all persisted per HUB IP in `state.json`.
+
+## License
+
+Owned by **MS4M**, private license.

@@ -1,0 +1,27 @@
+# Dependencias
+node_modules/
+
+# Builds
+dist/
+build/
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Archivos empaquetados / respaldos
+*.zip
+*.tar

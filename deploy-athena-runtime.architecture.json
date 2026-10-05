@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Deploy Athena runtime architecture",
+    "quality_profile": "showcase",
+    "viewBox": [1800, 900]
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [80, 100],
+    "cols": 8,
+    "gapX": 58,
+    "gapY": 72,
+    "cellW": 110,
+    "cellH": 90
+  },
+  "components": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "Operator",
+      "sublabel": "Browser",
+      "pos": [60, 320],
+      "size": [150, 72]
+    },
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "Web UI",
+      "sublabel": "HTML dashboard",
+      "pos": [280, 320],
+      "size": [170, 72]
+    },
+    {
+      "id": "server",
+      "type": "backend",
+      "label": "Deploy Athena",
+      "sublabel": "Node.js server",
+      "pos": [530, 320],
+      "size": [190, 74]
+    },
+    {
+      "id": "routes",
+      "type": "backend",
+      "label": "Router",
+      "sublabel": "HTTP endpoints",
+      "pos": [530, 160],
+      "size": [190, 64]
+    },
+    {
+      "id": "hubs",
+      "type": "database",
+      "label": "Hub registry",
+      "sublabel": "hubs.csv",
+      "pos": [820, 160],
+      "size": [170, 64]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "State store",
+      "sublabel": "state.json",
+      "pos": [820, 320],
+      "size": [170, 64]
+    },
+    {
+      "id": "logs",
+      "type": "database",
+      "label": "Logs & status",
+      "sublabel": "logs/*.log",
+      "pos": [820, 500],
+      "size": [170, 64]
+    },
+    {
+      "id": "ssh",
+      "type": "security",
+      "label": "SSH deploy layer",
+      "sublabel": "node-ssh",
+      "pos": [1090, 320],
+      "size": [200, 78],
+      "tag": "remote exec"
+    },
+    {
+      "id": "targets",
+      "type": "cloud",
+      "label": "Remote hubs",
+      "sublabel": "Athena hosts",
+      "pos": [1360, 320],
+      "size": [180, 72]
+    },
+    {
+      "id": "athena",
+      "type": "backend",
+      "label": "Athena app",
+      "sublabel": "Python service",
+      "pos": [1360, 520],
+      "size": [180, 72]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Local control plane",
+      "wraps": ["operator", "ui", "server", "routes", "hubs", "state", "logs"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Remote host access",
+      "wraps": ["ssh", "targets", "athena"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-to-ui",
+      "from": "operator",
+      "to": "ui",
+      "label": "HTTP GET /",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ui-to-server",
+      "from": "ui",
+      "to": "server",
+      "label": "deploy / update / logs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "server-router",
+      "from": "server",
+      "to": "routes",
+      "label": "route request"
+    },
+    {
+      "id": "router-hubs",
+      "from": "routes",
+      "to": "hubs",
+      "label": "read registry",
+      "variant": "dashed"
+    },
+    {
+      "id": "router-state",
+      "from": "routes",
+      "to": "state",
+      "label": "load / save state",
+      "variant": "dashed"
+    },
+    {
+      "id": "routes-logs",
+      "from": "routes",
+      "to": "logs",
+      "label": "append status"
+    },
+    {
+      "id": "server-ssh",
+      "from": "server",
+      "to": "ssh",
+      "label": "SSH + deploy"
+    },
+    {
+      "id": "ssh-targets",
+      "from": "ssh",
+      "to": "targets",
+      "label": "connect / upload / restart"
+    },
+    {
+      "id": "targets-athena",
+      "from": "targets",
+      "to": "athena",
+      "label": "service runs",
+      "variant": "dashed"
+    },
+    {
+      "id": "athena-health",
+      "from": "athena",
+      "to": "server",
+      "label": "curl / health check",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "right"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Local control plane",
+      "items": [
+        "Web UI renders hub state and command actions from the Node server.",
+        "The router reads the CSV registry and state file before each action."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Deployment flow",
+      "items": [
+        "The SSH layer connects to each remote hub, uploads athena.zip, and restarts the app.",
+        "A health check confirms the remote Athena service is active before the status is saved."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Operational data",
+      "items": [
+        "Each action writes logs and updates the persisted status file for the dashboard.",
+        "The server supports deploy, update, perclos, vibration, and upload workflows."
+      ]
+    }
+  ]
+}

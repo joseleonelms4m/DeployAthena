@@ -1,0 +1,14 @@
+{
+  "type": "module",
+  "//": [
+    "this package.json is for both legacy and lts version: server.js and ws.js respectively, which both can be entry point of the app.",
+    "it uses npm as the package manager, has package-lock.json file"
+  ],
+  "scripts": {
+    "lts": "node src/ws-server.js"
+  },
+  "dependencies": {
+    "antd": "^6.6.5",
+    "node-ssh": "^13.2.1"
+  }
+}

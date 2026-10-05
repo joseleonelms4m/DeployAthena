@@ -1,0 +1,7 @@
+# Ignore node modules, state file, and CSV file
+node_modules
+state.json
+CSV_FILE
+
+# Ignore any other temporary files
+*.tmp
