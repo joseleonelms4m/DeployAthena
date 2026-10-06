@@ -9,66 +9,12 @@ import {
     FileExcelOutlined
 } from '@ant-design/icons';
 
-    function FileManagement({
-        hubs,
-        onImport,
-        onBinaryUpload,
-        onExportReport,
-    //onExportCsv,
-    }) {
-
-    
-
-    const handleExportCsv = () => {
-    let csvContent;
-
-    if (hubs && hubs.length > 0) {
-        // Exportar los equipos actuales
-        const rows = hubs.map((hub) => {
-            return `${hub.name},${hub.ip}`;
-        });
-
-        csvContent = [
-            'name,ip',
-            ...rows
-        ].join('\n');
-
-    } else {
-        // CSV de ejemplo
-        csvContent = [
-            'name,ip',
-            'nombre1,ip1',
-            'nombre2,ip2',
-            'nombre3,ip3',
-            'nombre4,ip4',
-            'nombre5,ip5',
-            'nombre6,ip6',
-            'nombre7,ip7',
-            'nombre8,ip8',
-            'nombre9,ip9',
-            'nombre10,ip10'
-        ].join('\n');
-    }
-
-    // Crear archivo
-    const blob = new Blob(
-        [csvContent],
-        { type: 'text/csv;charset=utf-8;' }
-    );
-
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'hubs.csv';
-
-    document.body.appendChild(link);
-    link.click();
-
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-};
-
+function FileManagement({
+    hubs,
+    onImport,
+    onBinaryUpload,
+    onExportReport,
+}) {
 
     const [csvFile, setCsvFile] = useState(null);
     const [binaryFile, setBinaryFile] = useState(null);
@@ -76,64 +22,207 @@ import {
     const [csvStatus, setCsvStatus] = useState(null);
     const [binaryStatus, setBinaryStatus] = useState(null);
 
-    const handleCsvSelect = async (event) => {
-    const file = event.target.files?.[0];
 
-    if (!file) return;
+    // =========================================================
+    // EXPORTAR CSV
+    // =========================================================
 
-    setCsvFile(file);
-    setCsvStatus(null);
+    const handleExportCsv = () => {
 
-    try {
-        await onImport(file);
-        setCsvStatus('success');
-    } catch {
-        setCsvStatus('error');
-    } finally {
-        setCsvFile(null);
+        let csvContent;
 
-        const input = document.getElementById('csv-file');
-        if (input) {
-            input.value = '';
+        if (hubs && hubs.length > 0) {
+
+            const rows = hubs.map((hub) => {
+                return `${hub.name},${hub.ip}`;
+            });
+
+            csvContent = [
+                'name,ip',
+                ...rows
+            ].join('\n');
+
+        } else {
+
+            csvContent = [
+                'name,ip',
+                'nombre1,ip1',
+                'nombre2,ip2',
+                'nombre3,ip3',
+                'nombre4,ip4',
+                'nombre5,ip5',
+                'nombre6,ip6',
+                'nombre7,ip7',
+                'nombre8,ip8',
+                'nombre9,ip9',
+                'nombre10,ip10'
+            ].join('\n');
         }
-    }
-};
 
-    const handleBinarySelect = (event) => {
+
+        const blob = new Blob(
+            [csvContent],
+            {
+                type: 'text/csv;charset=utf-8;'
+            }
+        );
+
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = 'hubs.csv';
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        document.body.removeChild(link);
+
+        URL.revokeObjectURL(url);
+    };
+
+
+    // =========================================================
+    // CSV
+    // =========================================================
+
+    const handleCsvSelect = async (event) => {
+
         const file = event.target.files?.[0];
 
-        if (!file) return;
+        if (!file) {
+            return;
+        }
+
+        setCsvFile(file);
+        setCsvStatus(null);
+
+        try {
+
+            await onImport(file);
+
+            setCsvStatus('success');
+
+        } catch {
+
+            setCsvStatus('error');
+
+        } finally {
+
+            setCsvFile(null);
+
+            const input =
+                document.getElementById('csv-file');
+
+            if (input) {
+                input.value = '';
+            }
+        }
+    };
+
+
+    // =========================================================
+    // PAQUETE DE ACTUALIZACIÓN (.tar)
+    // =========================================================
+
+    const handleBinarySelect = (event) => {
+
+        const file = event.target.files?.[0];
+
+        if (!file) {
+            return;
+        }
+
+
+        // -----------------------------------------------------
+        // Validar extensión
+        // -----------------------------------------------------
+
+        if (!file.name.toLowerCase().endsWith('.tar')) {
+
+            setBinaryFile(null);
+            setBinaryStatus('invalid');
+
+            event.target.value = '';
+
+            return;
+        }
+
+
+        // -----------------------------------------------------
+        // Guardar archivo localmente en FileManagement
+        // -----------------------------------------------------
 
         setBinaryFile(file);
         setBinaryStatus(null);
+
+
+        // -----------------------------------------------------
+        // IMPORTANTE:
+        // entregar el archivo a WsPage
+        // -----------------------------------------------------
+
+        if (onBinaryUpload) {
+
+            console.log(
+                '[UPDATE] Archivo .tar seleccionado:',
+                file.name
+            );
+
+            console.log(
+                '[UPDATE] Tamaño:',
+                file.size,
+                'bytes'
+            );
+
+            onBinaryUpload(file);
+        }
+
+
+        // -----------------------------------------------------
+        // Permitir seleccionar nuevamente el mismo archivo
+        // -----------------------------------------------------
+
+        event.target.value = '';
     };
 
 
+    // =========================================================
+    // CANCELAR PAQUETE
+    // =========================================================
+
     const handleCancelBinary = () => {
+
         setBinaryFile(null);
         setBinaryStatus(null);
 
-        const input = document.getElementById('binary-file');
-        if (input) input.value = '';
-    };
 
-    const handleBinaryUpload = async () => {
-        if (!binaryFile) return;
+        const input =
+            document.getElementById('binary-file');
 
-        try {
-            await onBinaryUpload(binaryFile);
+        if (input) {
+            input.value = '';
+        }
 
-            setBinaryStatus('success');
-        } catch {
-            setBinaryStatus('error');
+
+        // Avisar a WsPage que ya no hay archivo seleccionado
+        if (onBinaryUpload) {
+            onBinaryUpload(null);
         }
     };
 
-    
+
+    // =========================================================
+    // RENDER
+    // =========================================================
+
     return (
         <section className="import-section">
 
             <div className="section-heading">
+
                 <div className="section-icon">
                     <SettingOutlined />
                 </div>
@@ -141,10 +230,12 @@ import {
                 <div>
                     <h2>Configuración de equipos</h2>
                 </div>
+
             </div>
 
 
             <div className="file-management">
+
 
                 {/* =================================================
                     CSV
@@ -154,24 +245,29 @@ import {
                     className="athena-card"
                     title={
                         <div>
+
                             <div className="athena-card-title">
                                 Importar equipos
                             </div>
 
                             <div className="athena-card-description">
-                                Carga los equipos desde un archivo CSV (Puedes mirar el formato CSV antes).
+                                Carga los equipos desde un archivo CSV
+                                (Puedes mirar el formato CSV antes).
                             </div>
+
                         </div>
                     }
                     extra={
                         <Space>
+
                             <Button
                                 className="athena-btn athena-btn-yellow"
                                 icon={<DownloadOutlined />}
                                 onClick={handleExportCsv}
                             >
-                                    Formato CSV
+                                Formato CSV
                             </Button>
+
 
                             <input
                                 id="csv-file"
@@ -181,29 +277,34 @@ import {
                                 onChange={handleCsvSelect}
                             />
 
+
                             {!csvFile && (
-                            <Button
-                                className="athena-btn athena-btn-yellow"
-                                icon={<UploadOutlined />}
-                                onClick={() =>
-                                    document
-                                        .getElementById('csv-file')
-                                        .click()
-                                }
-                            >
-                                Seleccionar CSV
-                            </Button>
+                                <Button
+                                    className="athena-btn athena-btn-yellow"
+                                    icon={<UploadOutlined />}
+                                    onClick={() =>
+                                        document
+                                            .getElementById('csv-file')
+                                            .click()
+                                    }
+                                >
+                                    Seleccionar CSV
+                                </Button>
                             )}
 
                         </Space>
                     }
                 >
+
                     {csvFile && (
                         <div className="selected-file">
                             Archivo seleccionado:{' '}
-                            <strong>{csvFile.name}</strong>
+                            <strong>
+                                {csvFile.name}
+                            </strong>
                         </div>
                     )}
+
 
                     {csvStatus === 'success' && (
                         <Alert
@@ -214,6 +315,7 @@ import {
                         />
                     )}
 
+
                     {csvStatus === 'error' && (
                         <Alert
                             className="file-status"
@@ -222,24 +324,29 @@ import {
                             title="No se pudo importar el archivo"
                         />
                     )}
+
                 </Card>
 
 
+
                 {/* =================================================
-                    BINARIO
+                    PAQUETE DE ACTUALIZACIÓN
                 ================================================= */}
 
                 <Card
                     className="athena-card"
                     title={
                         <div>
+
                             <div className="athena-card-title">
-                                Importar binario
+                                Importar actualización
                             </div>
 
                             <div className="athena-card-description">
-                                Selecciona el binario que utilizarán los equipos.
+                                Carga el paquete .tar que contiene la
+                                actualización de Athena.
                             </div>
+
                         </div>
                     }
                     extra={
@@ -248,11 +355,14 @@ import {
                             <input
                                 id="binary-file"
                                 type="file"
+                                accept=".tar,application/x-tar"
                                 hidden
                                 onChange={handleBinarySelect}
                             />
 
+
                             {!binaryFile ? (
+
                                 <Button
                                     className="athena-btn athena-btn-yellow"
                                     icon={<UploadOutlined />}
@@ -262,17 +372,24 @@ import {
                                             .click()
                                     }
                                 >
-                                    Seleccionar binario
+                                    Seleccionar .tar
                                 </Button>
+
                             ) : (
+
                                 <>
+
                                     <Button
-                                        type="primary"
-                                        icon={<UploadOutlined />}
-                                        onClick={handleBinaryUpload}
+                                        className="athena-btn athena-btn-yellow"
+                                        onClick={() =>
+                                            document
+                                                .getElementById('binary-file')
+                                                .click()
+                                        }
                                     >
-                                        Subir
+                                        {binaryFile.name}
                                     </Button>
+
 
                                     <Button
                                         danger
@@ -281,47 +398,38 @@ import {
                                     >
                                         Cancelar
                                     </Button>
+
                                 </>
+
                             )}
 
                         </Space>
                     }
                 >
-                    {binaryFile && (
-                        <div className="selected-file">
-                            Archivo seleccionado:{' '}
-                            <strong>{binaryFile.name}</strong>
-                        </div>
-                    )}
 
-                    {binaryStatus === 'success' && (
+                    {binaryStatus === 'invalid' && (
                         <Alert
                             className="file-status"
-                            type="success"
+                            type="warning"
                             showIcon
-                            title="Binario subido correctamente"
+                            title="Archivo no válido"
+                            description="Selecciona un paquete con extensión .tar."
                         />
                     )}
 
-                    {binaryStatus === 'error' && (
-                        <Alert
-                            className="file-status"
-                            type="error"
-                            showIcon
-                            title="No se pudo subir el binario"
-                        />
-                    )}
                 </Card>
 
 
+
                 {/* =================================================
-                    EXPORTAR
+                    EXPORTAR REPORTE
                 ================================================= */}
 
                 <Card
                     className="athena-card"
                     title={
                         <div>
+
                             <div className="athena-card-title">
                                 Descargar reporte
                             </div>
@@ -329,6 +437,7 @@ import {
                             <div className="athena-card-description">
                                 Descarga el reporte actual de los equipos.
                             </div>
+
                         </div>
                     }
                     extra={

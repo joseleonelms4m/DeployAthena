@@ -23,7 +23,7 @@ function ActionBar({
         modal.confirm({
             title: 'Limpiar equipos',
             content:
-                '¿Está seguro de que quiere limpiar todos los equipos? Todos los equipos desaparecerán de inmediato.',
+                'Se eliminarán todos los equipos de la lista actual de Athena. Esto no desinstala ni modifica nada en los equipos físicos. ¿Desea continuar?',
             okText: 'Sí, limpiar equipos',
             cancelText: 'Cancelar',
             okType: 'danger',
@@ -77,7 +77,7 @@ function ActionBar({
                         disabled={disabled}
                         onClick={() => onAction('update')}
                     >
-                        Actualizar binario
+                        Actualizar hub
                     </Button>
 
                 </Space>

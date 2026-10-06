@@ -8,6 +8,7 @@ import { vibrationOffController } from './controllers/vibrationOffWs.controller.
 import { vibrationOnController } from './controllers/vibrationOnWs.controller.js';
 import { updateHubController } from './controllers/updateHubWs.controller.js';
 import { loadHubs } from './controllers/loadHubs.controller.js';
+import { clearHubs } from './controllers/clearHubs.controller.js';
 ///
 const {logConnection, parseCSV, loadState} = Tools
 let hubs = parseCSV();
@@ -63,6 +64,10 @@ server.on('data', (message, reply) => {
             loadHubs(hubs, state, data, reply)
             return;
         }
+        case "clear":{
+            clearHubs(hubs, state, reply);
+        return;
+        }
         default:{
             return reply({"choose": "non existant answer!!!"})
         }
@@ -76,3 +81,4 @@ server.on('close', async (socket) => {
 server.listen(() => {
     console.log(`WebSocket server listening on port ${PORT}`);
 });
+
